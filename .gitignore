@@ -1,1 +1,2 @@
-.vagrant
+/.vagrant
+/config/package_provider.yml

@@ -6,6 +6,7 @@ sudo: true
 cache: bundler
 
 before_script: |
+  cp config/package_provider.yml.example config/package_provider.yml
   mkdir -p /tmp/submodule_repo
   sudo  mount --bind $(pwd)/spec/factories/testing-submodule-repo /tmp/submodule_repo
 

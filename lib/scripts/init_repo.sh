@@ -1,4 +1,5 @@
 #!/bin/bash
+
 set -e
 [ -n "$ENV" -a "$ENV" != 'production' ] && set -x
 

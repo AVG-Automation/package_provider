@@ -1,0 +1,20 @@
+default: &defaults
+  sentry_dsn: 'https://hash:hash@example.com'
+  log_level: 0
+  time_zone: :utc
+  graphite:
+    host:
+    port: 2003
+    options: {}
+
+production:
+  <<: *defaults
+
+development:
+  <<: *defaults
+
+test:
+  sentry_dsn:
+  log_level: <%= Logger::WARN %>
+  time_zone: :utc
+  graphite:

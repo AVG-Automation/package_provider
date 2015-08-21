@@ -1,5 +1,5 @@
-require 'codeclimate-test-reporter'
-CodeClimate::TestReporter.start
+# require 'codeclimate-test-reporter'
+# CodeClimate::TestReporter.start
 
 $LOAD_PATH << 'lib'
 require 'package_provider'
@@ -8,7 +8,7 @@ require 'package_provider/repository'
 require 'support/helpers'
 require 'request_parser/parser'
 
-PackageProvider.logger.level = Logger::WARN
+PackageProvider.setup
 
 RSpec.configure do |config|
   config.include Helpers
