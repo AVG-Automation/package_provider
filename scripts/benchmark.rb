@@ -17,7 +17,10 @@ repo_url = ENV['REPO_URL']
 commit_hash = ENV['COMMIT_HASH']
 repo_local_cache = ENV['REPO_LOCAL_CACHE']
 repo_local_cache_fetched = ENV['REPO_LOCAL_CACHE_FETCHED']
-checkout_mask = ENV['REPO_CHECKOUT_MASK'] || ['/**']
+checkout_mask = ['/**']
+if ENV['REPO_CHECKOUT_MASK']
+  checkout_mask = ENV['REPO_CHECKOUT_MASK'].split(',')
+end
 
 # ------------------------------ INIT  -----------------------------------------
 mutex = Mutex.new
@@ -33,8 +36,9 @@ Benchmark.bm do |x|
     (0..4).map do
       not_fetched_repos << PackageProvider::Repository.new(
         repo_url, repo_local_cache)
+
       fetched_repos << PackageProvider::Repository.new(
-        repo_url, repo_local_cache_fetched)
+        repo_url, repo_local_cache_fetched) if repo_local_cache_fetched
     end
   end
 end
