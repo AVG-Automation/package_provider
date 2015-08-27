@@ -16,6 +16,10 @@ module PackageProvider
 
     class InvalidRepoPath < ArgumentError
     end
+
+    class CannotClone < StandardError
+    end
+
     # rubocop:disable TrivialAccessors
     def self.temp_prefix=(tp)
       @temp_prefix = tp
@@ -24,6 +28,7 @@ module PackageProvider
     def self.temp_prefix
       @temp_prefix || 'pp_repo_'
     end
+
     # rubocop:enable TrivialAccessors
     def initialize(git_repo_url, git_repo_local_cache_root = nil)
       if git_repo_local_cache_root && !Dir.exist?(git_repo_local_cache_root)
@@ -81,11 +86,12 @@ module PackageProvider
     private
 
     def init_repo!(git_repo_local_cache_root)
-      run_command(
+      success, stderr = run_command(
         { 'ENV' => PackageProvider.env },
         [INIT_SCRIPT, repo_url, git_repo_local_cache_root || ''],
         chdir: repo_root
       )
+      raise CannotClone.new(stderr) unless success
     end
 
     def fetch!
@@ -113,6 +119,7 @@ module PackageProvider
         logger.error "Command #{params.inspect} failed! " \
                      "STDOUT: #{o.inspect}, STDERR: #{e.inspect}"
       end
+      [s.success?, e]
     end
 
     def log_result(std, params, result)
