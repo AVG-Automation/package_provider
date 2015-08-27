@@ -17,7 +17,13 @@ module PackageProvider
     class InvalidRepoPath < ArgumentError
     end
 
-    class CannotClone < StandardError
+    class CannotInitRepo < StandardError
+    end
+
+    class CannotFetchRepo < StandardError
+    end
+
+    class CannotCloneRepo < StandardError
     end
 
     # rubocop:disable TrivialAccessors
@@ -64,7 +70,9 @@ module PackageProvider
         command << '--use-submodules' if use_submodules
         command.concat [repo_root, dest_dir, treeish]
 
-        run_command({ 'ENV' => PackageProvider.env }, command, chdir: repo_root)
+        success, stderr = run_command(
+          { 'ENV' => PackageProvider.env }, command, chdir: repo_root)
+        fail CannotCloneRepo, stderr unless success
         # touch .package_provider_ready
         dest_dir
       rescue => err
@@ -91,11 +99,13 @@ module PackageProvider
         [INIT_SCRIPT, repo_url, git_repo_local_cache_root || ''],
         chdir: repo_root
       )
-      raise CannotClone.new(stderr) unless success
+      fail CannotInitRepo, stderr unless success
     end
 
     def fetch!
-      run_command({}, ['git', 'fetch', '--all'], chdir: repo_root)
+      success, stderr = run_command(
+        {}, ['git', 'fetch', '--all'], chdir: repo_root)
+      fail CannotFetchRepo, stderr unless success
     end
 
     def fill_sparse_checkout_file(paths)

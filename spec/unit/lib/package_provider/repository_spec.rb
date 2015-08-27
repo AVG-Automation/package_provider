@@ -8,7 +8,7 @@ describe PackageProvider::Repository do
 
   let(:repo) do
     status = double(:status)
-    expect(status).to receive(:success?).and_return(true)
+    expect(status).to receive(:success?).twice.and_return(true)
     expect(Open3).to(
       receive(:capture3)
       .with({ 'ENV' => PackageProvider.env }, /.*init_repo.sh/, any_args)
@@ -50,7 +50,7 @@ describe PackageProvider::Repository do
 
     it 'calls 3x Open3::capture' do
       status = double(:status)
-      expect(status).to receive(:success?).and_return(true)
+      expect(status).to receive(:success?).twice.and_return(true)
 
       expect(repo).to receive(:fetch).with(treeish).once
 
@@ -81,7 +81,7 @@ describe PackageProvider::Repository do
   describe '#fetch' do
     it 'calls 2x Open3::capture3' do
       status = double(:status)
-      expect(status).to receive(:success?).and_return(true)
+      expect(status).to receive(:success?).twice.and_return(true)
 
       expect(Open3).to(
         receive(:capture3)
