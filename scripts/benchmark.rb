@@ -5,6 +5,7 @@ require 'package_provider'
 require 'package_provider/repository'
 
 # --------------------------- CONSTANTS-----------------------------------------
+THREADS = 6
 repo_url = ENV['REPO_URL']
 commit_hash = ENV['COMMIT_HASH']
 repo_local_cache = ENV['REPO_LOCAL_CACHE']
@@ -17,33 +18,30 @@ PackageProvider.logger = Logger.new('log/debug.log')
 $dest_dirs = []
 $repos = []
 
-puts 'preparing 10 repos into array'
-
-THREADS = 6
-
-
 def get_temp_dir_name(prefix)
   t = Dir.mktmpdir(prefix)
   FileUtils.rm_rf(t)
   t
 end
 
-def init_repos(count, repo_url: , repo_local_cache: nil)
-  count.times do |i|
+puts 'preparing 10 repos into array'
+
+def init_repos(count, repo_url:, repo_local_cache: nil)
+  count.times do
     $repos << PackageProvider::Repository.new(repo_url, repo_local_cache)
   end
 end
 
 def clone(threads, count, commit_hash:, checkout_mask:)
-  threads = (0..(threads-1)).to_a.map do |thread_idx|
+  threads = (0..(threads - 1)).to_a.map do |thread_idx|
     Thread.new do
-      count.times do |ii|
+      count.times do
         # init dest dir, and remember it for deleting later
         dest_dir = get_temp_dir_name('pp_benchmark_')
         $mutex.synchronize { $dest_dirs << dest_dir }
 
         # clone repo
-        $repos[thread_idx].clone( dest_dir, commit_hash, checkout_mask, false)
+        $repos[thread_idx].clone(dest_dir, commit_hash, checkout_mask, false)
       end
     end
   end
@@ -59,7 +57,6 @@ begin
     x.report('clone-threads-2') { clone(2, 6, commit_hash: commit_hash, checkout_mask: checkout_mask) }
     x.report('clone-threads-3') { clone(3, 4, commit_hash: commit_hash, checkout_mask: checkout_mask) }
     x.report('clone-threads-4') { clone(4, 3, commit_hash: commit_hash, checkout_mask: checkout_mask) }
-    #x.report('clone-threads-5') { clone(5, 3, commit_hash: commit_hash, checkout_mask: checkout_mask) }
     x.report('clone-threads-6') { clone(6, 2, commit_hash: commit_hash, checkout_mask: checkout_mask) }
   end
 
