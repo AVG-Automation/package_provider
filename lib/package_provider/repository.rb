@@ -16,6 +16,16 @@ module PackageProvider
 
     class InvalidRepoPath < ArgumentError
     end
+
+    class CannotInitRepo < StandardError
+    end
+
+    class CannotFetchRepo < StandardError
+    end
+
+    class CannotCloneRepo < StandardError
+    end
+
     # rubocop:disable TrivialAccessors
     def self.temp_prefix=(tp)
       @temp_prefix = tp
@@ -24,6 +34,7 @@ module PackageProvider
     def self.temp_prefix
       @temp_prefix || 'pp_repo_'
     end
+
     # rubocop:enable TrivialAccessors
     def initialize(git_repo_url, git_repo_local_cache_root = nil)
       if git_repo_local_cache_root && !Dir.exist?(git_repo_local_cache_root)
@@ -59,7 +70,9 @@ module PackageProvider
         command << '--use-submodules' if use_submodules
         command.concat [repo_root, dest_dir, treeish]
 
-        run_command({ 'ENV' => PackageProvider.env }, command, chdir: repo_root)
+        success, stderr = run_command(
+          { 'ENV' => PackageProvider.env }, command, chdir: repo_root)
+        fail CannotCloneRepo, stderr unless success
         # touch .package_provider_ready
         dest_dir
       rescue => err
@@ -81,15 +94,18 @@ module PackageProvider
     private
 
     def init_repo!(git_repo_local_cache_root)
-      run_command(
+      success, stderr = run_command(
         { 'ENV' => PackageProvider.env },
         [INIT_SCRIPT, repo_url, git_repo_local_cache_root || ''],
         chdir: repo_root
       )
+      fail CannotInitRepo, stderr unless success
     end
 
     def fetch!
-      run_command({}, ['git', 'fetch', '--all'], chdir: repo_root)
+      success, stderr = run_command(
+        {}, ['git', 'fetch', '--all'], chdir: repo_root)
+      fail CannotFetchRepo, stderr unless success
     end
 
     def fill_sparse_checkout_file(paths)
@@ -113,6 +129,7 @@ module PackageProvider
         logger.error "Command #{params.inspect} failed! " \
                      "STDOUT: #{o.inspect}, STDERR: #{e.inspect}"
       end
+      [s.success?, e]
     end
 
     def log_result(std, params, result)
