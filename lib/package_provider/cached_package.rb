@@ -80,13 +80,13 @@ module PackageProvider
       @package_request.each do |req|
         checkout_dir = PackageProvider::CachedRepository.cache_dir(req)
 
-        error += load_error(checkout_dir)
+        error += load_error(checkout_dir, req)
 
         req.folder_override.each do |fo|
           packer.add_folder(checkout_dir, fo)
         end
       end
-      logger.info("ERROR #{error}")
+
       error.empty? ? packer.flush : package_error!(error)
     end
 
@@ -120,9 +120,9 @@ module PackageProvider
       File.delete(@locked_package_file.path)
     end
 
-    def load_error(path)
+    def load_error(path, req)
       file_path = "#{path}.error"
-      File.exist?(file_path) ? File.read(file_path) : ''
+      File.exist?(file_path) ? req.to_tsd + ":\n" + File.read(file_path) : ''
     end
   end
 end
