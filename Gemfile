@@ -18,7 +18,6 @@ gem 'rubyzip',          '~> 1.1'
 
 gem 'connection_pool',  '~> 2.2'
 gem 'sidekiq',          '~> 3.5'
-gem 'unicorn'
 
 group :test, :development do
   gem 'rspec'

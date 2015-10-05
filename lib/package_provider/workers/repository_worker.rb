@@ -12,7 +12,8 @@ module PackageProvider
 
     def perform(request_as_json)
       request = PackageProvider::RepositoryRequest.from_json(request_as_json)
-      PackageProvider.logger.info("performing clonning: #{request.inspect}")
+      PackageProvider.logger.info(
+        "performing clonning: #{request.to_tsd} #{request.fingerprint}")
 
       repo_config = PackageProvider::RepositoryConfig.find(request.repo)
       c_pool = ReposPool.fetch(request.repo)
@@ -23,10 +24,10 @@ module PackageProvider
         begin
           i.cached_clone(request)
         rescue PackageProvider::CachedRepository::CloneInProgress
-          PackageProvider.logger.info("clone in progress: #{request.inspect}")
+          PackageProvider.logger.info("clone in progress: #{request.to_tsd}")
         end
       end
-      PackageProvider.logger.info("clonning done #{request.inspect}")
+      PackageProvider.logger.info("clonning done #{request.to_tsd}")
     end
   end
 end

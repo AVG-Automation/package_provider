@@ -40,6 +40,7 @@ module PackageProvider
       end
 
       locked_file = lock_repo(cached_dir)
+      return cached_dir if CachedRepository.repo_ready?(cached_dir)
       perform_and_handle_clone(req, cached_dir)
       repo_ready!(cached_dir)
 
@@ -55,11 +56,11 @@ module PackageProvider
     end
 
     def lock_repo(path)
-      Timeout.timeout(2) do
-        lock_file = "#{path}.clone_lock"
+      lock_file = "#{path}.clone_lock"
+      Timeout.timeout(1) do
         f = File.open(lock_file, File::RDWR | File::CREAT, 0644)
         f.flock(File::LOCK_EX)
-        logger.info("Locking file #{lock_file}")
+        logger.info("Locked file #{lock_file}")
         f
       end
     rescue Timeout::Error
@@ -76,6 +77,7 @@ module PackageProvider
 
     def unlock_repo(f)
       return unless f
+      return unless File.exist?(f.path)
       f.flock(File::LOCK_UN)
       logger.info("Unlocking file #{f.path}")
       File.delete(f.path)

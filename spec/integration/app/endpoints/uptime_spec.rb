@@ -17,9 +17,15 @@ describe 'Application API uptime' do
     let(:prefix) { PackageProvider.config.base_url }
 
     it 'responds to uptime' do
+      allow(Sidekiq::Queue).to receive_message_chain(:new, :size) { 0 }
+      allow(Sidekiq::Queue).to receive_message_chain(:new, :latency) { 0 }
+
       response = get "#{prefix}/uptime", {}, headers_json
+
       expect(response.body).to eq(
-        "Ready and waiting from #{PackageProvider.start_time}!")
+        "Up from #{PackageProvider.start_time}!\n" \
+        "Packer queue-status size: 0 latency: 0\n" \
+        'Repository queue-status size: 0 latency: 0')
     end
   end
 end

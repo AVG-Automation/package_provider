@@ -72,7 +72,6 @@ GEM
     i18n (0.7.0)
     json (1.8.3)
     json (1.8.3-java)
-    kgio (2.9.3)
     metriks (0.9.9.7)
       atomic (~> 1.0)
       avl_tree (~> 1.2.0)
@@ -93,7 +92,6 @@ GEM
     rack-test (0.6.3)
       rack (>= 1.0)
     rainbow (2.0.0)
-    raindrops (0.15.0)
     redis (3.2.1)
     redis-namespace (1.5.2)
       redis (~> 3.0, >= 3.0.4)
@@ -151,10 +149,6 @@ GEM
       hitimes
     tzinfo (1.2.2)
       thread_safe (~> 0.1)
-    unicorn (4.9.0)
-      kgio (~> 2.6)
-      rack
-      raindrops (~> 0.7)
 
 PLATFORMS
   java
@@ -178,7 +172,6 @@ DEPENDENCIES
   sidekiq (~> 3.5)
   sinatra (~> 1.4)
   sinatra-contrib (~> 1.4)
-  unicorn
 
 BUNDLED WITH
    1.10.6

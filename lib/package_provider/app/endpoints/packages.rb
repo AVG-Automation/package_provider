@@ -9,8 +9,8 @@ module PackageProvider
       # handles all endpoints related to packages
       class Packages < Base
         post '/download' do
-          package_request = parse_request(request)
-          halt 400, { message: 'Unknown format' }.to_json unless package_request
+          package_request, error_msg = parse_request(request)
+          halt 400, { message: error_msg }.to_json unless package_request
 
           package_request.normalize!
 
@@ -34,10 +34,15 @@ module PackageProvider
 
         def parse_request(request)
           if request.content_type == 'application/json'
-            return PackageProvider::Parser.new.parse_json(request.body.read)
+            return [
+              PackageProvider::Parser.new.parse_json(request.body.read), nil]
           elsif request.content_type == 'text/plain'
-            return PackageProvider::Parser.new.parse(request.body.read)
+            return [PackageProvider::Parser.new.parse(request.body.read), nil]
           end
+        rescue JSON::ParserError => err
+          [nil, "Unable to parse JSON: #{err}"]
+        rescue => err
+          [nil, "Unable to process request: #{err}"]
         end
       end
     end
