@@ -3,11 +3,15 @@
 require 'pp'
 require 'fakefs/safe'
 
-describe PackageProvider::CachedPackage do
+describe PackageProvider::CachedRepository do
   let(:fake_repo_url) { 'git_repository_url' }
   let(:subject) { PackageProvider::CachedRepository.new(fake_repo_url) }
   let(:request) { PackageProvider::RepositoryRequest.new('xx', 'treeish', nil) }
   let(:path) { PackageProvider::CachedRepository.cache_dir(request) }
+
+  let(:repo_ready) { PackageProvider::CachedRepository::PACKAGE_PART_READY }
+  let(:repo_error) { PackageProvider::CachedRepository::ERROR }
+  let(:repo_clone) { PackageProvider::CachedRepository::CLONE_LOCK }
 
   before(:all) do
     FakeFS.activate!
@@ -37,32 +41,32 @@ describe PackageProvider::CachedPackage do
 
   describe '::cached?' do
     it 'returns true if error occurs during clonning' do
-      FileUtils.touch("#{path}.package_part_ready")
-      FileUtils.touch("#{path}.error")
+      FileUtils.touch("#{path + repo_ready}")
+      FileUtils.touch("#{path + repo_error}")
 
       expect(PackageProvider::CachedRepository.cached?(request))
         .to be true
 
-      FileUtils.rm_rf("#{path}.error")
-      FileUtils.rm_rf("#{path}.package_part_ready")
+      FileUtils.rm_rf("#{path + repo_error}")
+      FileUtils.rm_rf("#{path + repo_ready}")
     end
 
     it 'returns true if repository cache is prepared' do
-      FileUtils.touch("#{path}.package_part_ready")
+      FileUtils.touch("#{path + repo_ready}")
 
       expect(PackageProvider::CachedRepository.cached?(request))
         .to be true
 
-      FileUtils.rm_rf("#{path}.package_part_ready")
+      FileUtils.rm_rf("#{path + repo_ready}")
     end
 
     it 'returns false if clonning in progress' do
-      FileUtils.touch("#{path}.clone_lock")
+      FileUtils.touch("#{path + repo_clone}")
 
       expect(PackageProvider::CachedRepository.cached?(request))
         .to be false
 
-      FileUtils.rm_rf("#{path}.clone_lock")
+      FileUtils.rm_rf("#{path + repo_clone}")
     end
   end
 end

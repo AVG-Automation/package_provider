@@ -19,7 +19,9 @@ describe 'Cached repository integration' do
   let(:dir) do
     PackageProvider::CachedRepository.cache_dir(request)
   end
-
+  let(:repo_ready) { PackageProvider::CachedRepository::PACKAGE_PART_READY }
+  let(:repo_error) { PackageProvider::CachedRepository::ERROR }
+  let(:repo_clone) { PackageProvider::CachedRepository::CLONE_LOCK }
   after(:each) do
     repo && repo.destroy
     repo2 && repo2.destroy
@@ -28,15 +30,15 @@ describe 'Cached repository integration' do
   describe '#cached_clone' do
     after(:each) do
       FileUtils.rm_rf(dir)
-      FileUtils.rm_rf("#{dir}.package_part_ready")
+      FileUtils.rm_rf("#{dir + repo_ready}")
     end
 
     it 'creates cache' do
       repo.cached_clone(request)
 
       expect(Dir.exist?(dir)).to be true
-      expect(File.exist?("#{dir}.package_part_ready")).to be true
-      expect(File.exist?("#{dir}.clone_lock")).to be false
+      expect(File.exist?("#{dir + repo_ready}")).to be true
+      expect(File.exist?("#{dir + repo_clone}")).to be false
     end
 
     it 'loads from existing cache' do
@@ -71,8 +73,8 @@ describe 'Cached repository integration' do
       expect { repo.cached_clone(request) }.to raise_error(
         RuntimeError)
 
-      expect(File.exist?("#{dir}.package_part_ready")).to be false
-      expect(File.exist?("#{dir}.clone_lock")).to be false
+      expect(File.exist?("#{dir + repo_ready}")).to be false
+      expect(File.exist?("#{dir + repo_clone}")).to be false
     end
 
     it 'creates error file on clone exception' do
@@ -82,10 +84,10 @@ describe 'Cached repository integration' do
 
       repo.cached_clone(request)
 
-      expect(File.exist?("#{dir}.package_part_ready")).to be true
-      expect(File.exist?("#{dir}.error")).to be true
+      expect(File.exist?("#{dir + repo_ready}")).to be true
+      expect(File.exist?("#{dir + repo_error}")).to be true
 
-      FileUtils.rm_rf("#{dir}.error")
+      FileUtils.rm_rf("#{dir + repo_error}")
     end
 
     it 'creates error file on fetch exception' do
@@ -95,10 +97,10 @@ describe 'Cached repository integration' do
 
       repo.cached_clone(request)
 
-      expect(File.exist?("#{dir}.package_part_ready")).to be true
-      expect(File.exist?("#{dir}.error")).to be true
+      expect(File.exist?("#{dir + repo_ready}")).to be true
+      expect(File.exist?("#{dir + repo_error}")).to be true
 
-      FileUtils.rm_rf("#{dir}.error")
+      FileUtils.rm_rf("#{dir + repo_error}")
     end
   end
 end

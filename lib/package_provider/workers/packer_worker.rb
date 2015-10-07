@@ -18,39 +18,41 @@ module PackageProvider
       parser = PackageProvider::Parser.new
       package_request = parser.parse_json(package_request_as_json)
 
+      PackageProvider.logger.info(
+        "Packing: #{package_request.to_tsd} #{package_request.fingerprint}")
+
       waiting_for_repo = false
       package_request.each do |req|
         waiting_for_repo ||= !request_ready_or_schedule(req)
       end
 
       if waiting_for_repo
-        reschedule(package_request_as_json)
+        reschedule(package_request)
       else
         begin
           CachedPackage.new(package_request).cache_package
         rescue PackageProvider::CachedPackage::PackingInProgress
           PackageProvider.logger.info(
-            "Packing in progress #{package_request_as_json}")
+            "Packing in progress #{package_request.to_tsd}")
         end
       end
     end
 
     private
 
-    def reschedule(package_request_as_json)
-      PackageProvider.logger.info(
-        "packing reschedule #{package_request_as_json}")
+    def reschedule(package_request)
+      PackageProvider.logger.info("packer reschedule #{package_request.to_tsd}")
 
       PackerWorker.perform_in(
         PackageProvider.config.sidekiq.packer_reschedule_time.seconds,
-        package_request_as_json)
+        package_request.to_json)
     end
 
     def request_ready_or_schedule(req)
       return true if PackageProvider::CachedRepository.cached?(req)
       return true if PackageProvider::CachedRepository.in_progress?(req)
 
-      PackageProvider.logger.debug("scheduling clonning #{req.inspect}")
+      PackageProvider.logger.debug("scheduling clonning #{req.to_tsd}")
 
       PackageProvider::RepositoryWorker.perform_async(req.to_json)
 
