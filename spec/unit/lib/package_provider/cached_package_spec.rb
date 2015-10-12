@@ -24,6 +24,12 @@ describe PackageProvider::CachedPackage do
   end
 
   before(:each) do
+    FileUtils.rm_rf(cached_packages_test_path)
+    FileUtils.rm_rf(cached_repositories_test_path)
+
+    Dir.mkdir(cached_packages_test_path)
+    Dir.mkdir(cached_repositories_test_path)
+
     allow(PackageProvider.config)
       .to receive(:package_cache_root) { cached_packages_test_path }
     allow(PackageProvider.config)
@@ -39,11 +45,10 @@ describe PackageProvider::CachedPackage do
     it 'return archive on empty request' do
       subject.cache_package
 
-      pac_file = PackageProvider::CachedPackage.from_cache(
-        package_request.fingerprint)
+      package_file = PackageProvider::CachedPackage.from_cache(package_request)
 
-      expect(pac_file).to match(/package.zip\Z/)
-      expect(File.exist?(pac_file)).to be true
+      expect(package_file).to match(/package.zip\Z/)
+      expect(File.exist?(package_file)).to be true
     end
 
     it 'removes folder and .clone_lock file on error' do
@@ -53,9 +58,10 @@ describe PackageProvider::CachedPackage do
       expect(PackageProvider::CachedPackage.from_cache(package_request))
         .to be nil
 
-      path = PackageProvider::CachedPackage.package_path(package_request)
-      expect(File.exist?("#{path}.package_clone_lock"))
-        .to be false
+      path = PackageProvider::CachedRepository.cache_dir(repository_request)
+      path << PackageProvider::CachedRepository::CLONE_LOCK
+
+      expect(File.exist?(path)).to be false
     end
 
     it 'raises error when packing is in progress' do
@@ -88,15 +94,16 @@ describe PackageProvider::CachedPackage do
 
     it 'creates error file when one of repositories has error' do
       path = PackageProvider::CachedRepository.cache_dir(repository_request)
+      path << PackageProvider::CachedRepository::ERROR
 
-      File.open("#{path}.error", 'w+') do |f|
+      File.open(path, 'w+') do |f|
         f.puts('some error')
       end
 
       subject3.cache_package
 
       err_file_path = PackageProvider::CachedPackage.package_path(
-        package_request2.fingerprint)
+        package_request2)
 
       expect(File.exist?(err_file_path)).to be true
     end

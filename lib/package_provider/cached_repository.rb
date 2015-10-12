@@ -10,13 +10,17 @@ module PackageProvider
     class RepoServantDoesNotMatch < StandardError
     end
 
+    PACKAGE_PART_READY = '.package_part_ready'
+    CLONE_LOCK = '.clone_lock'
+    ERROR = '.error'
+
     class << self
       def cached?(req)
         repo_ready?(cache_dir(req))
       end
 
       def in_progress?(req)
-        File.exist?("#{cache_dir(req)}.clone_lock")
+        File.exist?("#{cache_dir(req) + CLONE_LOCK}")
       end
 
       def cache_dir(req)
@@ -24,9 +28,10 @@ module PackageProvider
       end
 
       def repo_ready?(path)
-        (Dir.exist?(path) && File.exist?("#{path}.package_part_ready")) ||
-          (File.exist?("#{path}.package_part_ready") &&
-          File.exist?("#{path}.error")) && !File.exist?("#{path}.clone_lock")
+        (Dir.exist?(path) && File.exist?("#{path + PACKAGE_PART_READY}")) ||
+          (File.exist?("#{path + PACKAGE_PART_READY}") &&
+           File.exist?("#{path + ERROR}")) &&
+            !File.exist?("#{path + CLONE_LOCK}")
       end
     end
 
@@ -40,6 +45,7 @@ module PackageProvider
       end
 
       locked_file = lock_repo(cached_dir)
+      return cached_dir if File.exist?("#{cached_dir + PACKAGE_PART_READY}")
       perform_and_handle_clone(req, cached_dir)
       repo_ready!(cached_dir)
 
@@ -55,11 +61,11 @@ module PackageProvider
     end
 
     def lock_repo(path)
+      lock_file = "#{path + CLONE_LOCK}"
       Timeout.timeout(2) do
-        lock_file = "#{path}.clone_lock"
         f = File.open(lock_file, File::RDWR | File::CREAT, 0644)
         f.flock(File::LOCK_EX)
-        logger.info("Locking file #{lock_file}")
+        logger.info("Lock file #{lock_file}")
         f
       end
     rescue Timeout::Error
@@ -69,20 +75,20 @@ module PackageProvider
     end
 
     def repo_error!(path, message)
-      File.open("#{path}.error", 'w+') do |f|
+      File.open("#{path + ERROR}", 'w+') do |f|
         f.puts(message)
       end
     end
 
     def unlock_repo(f)
+      logger.info('Unlocking repo')
       return unless f
-      f.flock(File::LOCK_UN)
-      logger.info("Unlocking file #{f.path}")
+      logger.info("Delete file #{f.path}")
       File.delete(f.path)
     end
 
     def repo_ready!(path)
-      FileUtils.touch("#{path}.package_part_ready")
+      FileUtils.touch("#{path + PACKAGE_PART_READY}")
     end
 
     def perform_and_handle_clone(req, cached_dir)

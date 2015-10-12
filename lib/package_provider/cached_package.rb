@@ -9,40 +9,51 @@ module PackageProvider
     class PackingInProgress < StandardError
     end
 
+    PACKAGE_READY = '.package_ready'
+    PACKAGE_CLONE_LOCK = '.package_clone_lock'
+    ERROR = '.error'
+
     class << self
-      def from_cache(package_fingerprint)
-        return nil unless package_ready?(package_fingerprint)
+      def from_cache(package_request_or_fingerprint)
+        return nil unless package_ready?(package_request_or_fingerprint)
         Metriks.meter('packageprovider.package.cached').mark
-        path_to_package(package_fingerprint)
+        path_to_package(package_request_or_fingerprint)
       end
 
-      def package_ready?(package_request)
-        if package_request.respond_to?(:fingerprint)
-          path = package_path(package_request.fingerprint)
-        else
-          path = package_path(package_request)
-        end
+      def package_ready?(package_request_or_fingerprint)
+        path = package_path(package_request_or_fingerprint)
 
-        Dir.exist?(path) && File.exist?("#{path}.package_ready") &&
+        Dir.exist?(path) && File.exist?("#{path + PACKAGE_READY}") &&
           File.exist?(File.join(path, 'package.zip')) &&
-          !File.exist?("#{path}.package_clone_lock")
+          !File.exist?("#{path + PACKAGE_CLONE_LOCK}")
       end
 
-      def package_path(package_fingerprint)
+      def package_path(package_request_or_fingerprint)
+        fp = package_request_fingerprint(package_request_or_fingerprint)
         File.join(
           PackageProvider.config.package_cache_root,
-          package_fingerprint)
+          fp)
       end
 
-      def errors(package_fingerprint)
-        file_path = File.join("#{package_path(package_fingerprint)}.error")
+      def errors(package_request_or_fingerprint)
+        fp = package_request_fingerprint(package_request_or_fingerprint)
+        file_path = File.join("#{package_path(fp) + ERROR}")
         File.read(file_path) if File.exist?(file_path)
       end
 
       private
 
-      def path_to_package(package_fingerprint)
-        File.join(package_path(package_fingerprint), 'package.zip')
+      def path_to_package(package_request_or_fingerprint)
+        fp = package_request_fingerprint(package_request_or_fingerprint)
+        File.join(package_path(fp), 'package.zip')
+      end
+
+      def package_request_fingerprint(package_request_or_fingerprint)
+        if package_request_or_fingerprint.respond_to?(:fingerprint)
+          package_request_or_fingerprint.fingerprint
+        else
+          package_request_or_fingerprint
+        end
       end
     end
 
@@ -56,6 +67,7 @@ module PackageProvider
 
     def cache_package
       lock_package
+      return if File.exist?("#{@path + PACKAGE_READY}")
       begin
         FileUtils.mkdir_p(@path)
         pack
@@ -91,21 +103,21 @@ module PackageProvider
     end
 
     def package_ready!
-      FileUtils.touch("#{@path}.package_ready")
+      FileUtils.touch("#{@path + PACKAGE_READY}")
     end
 
     def package_error!(message)
-      File.open("#{@path}.error", 'w+') do |f|
+      File.open("#{@path + ERROR}", 'w+') do |f|
         f.puts(message)
       end
     end
 
     def lock_package
       Timeout.timeout(2) do
-        file = "#{@path}.package_clone_lock"
+        file = "#{@path + PACKAGE_CLONE_LOCK}"
         locked_file = File.open(file, File::RDWR | File::CREAT, 0644)
         locked_file.flock(File::LOCK_EX)
-        logger.info("Locking package #{file}")
+        logger.info("Lock package #{file}")
         @locked_package_file = locked_file
       end
     rescue Timeout::Error
@@ -114,14 +126,14 @@ module PackageProvider
     end
 
     def unlock_package
+      logger.info('Unlocking package')
       return unless @locked_package_file
-      @locked_package_file.flock(File::LOCK_UN)
-      logger.info("Unlocking package #{@locked_package_file.path}")
+      logger.info("Delete file #{@locked_package_file.path}")
       File.delete(@locked_package_file.path)
     end
 
     def load_error(path, req)
-      file_path = "#{path}.error"
+      file_path = "#{path + ERROR}"
       File.exist?(file_path) ? req.to_tsd + ":\n" + File.read(file_path) : ''
     end
   end
