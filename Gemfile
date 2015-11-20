@@ -26,4 +26,6 @@ group :test, :development do
   gem 'fakefs'
   gem 'rubocop'
   gem 'codeclimate-test-reporter', require: nil
+  gem 'pry'
+  gem 'pry-doc'
 end
